@@ -14,6 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     if: github.repository == 'baburciu/argocd-extension-metrics'
     name: Release
+    permissions:
+      contents: write  # This is required for creating releases
     steps:
       - name: Checkout
         uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # pin@v3
@@ -32,15 +34,20 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Run GoReleaser (snapshot)
+      - name: Extract tag version
+        id: tag
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@5fdedb94abba051217030cc86d4523cf3f02243d
         with:
           distribution: goreleaser
           version: latest
-          args: release --snapshot --clean
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # We still keep the artifacts for reference
       - name: Upload extension artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -50,15 +57,24 @@ jobs:
             dist/*checksums.txt
           retention-days: 30
 
-      - name: Generate artifact URLs
+      - name: Generate release URLs
         run: |
+          TAG_VERSION=${{ steps.tag.outputs.VERSION }}
+          
           echo "## 📦 Extension Artifacts" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Download the extension files from the [Actions artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+          echo "### Public URLs for ArgoCD" >> $GITHUB_STEP_SUMMARY
+          echo "Use these URLs in your ArgoCD configuration:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Artifact name: \`extension-artifacts-${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "For ArgoCD configuration, you'll need to:" >> $GITHUB_STEP_SUMMARY
-          echo "1. Download the artifact" >> $GITHUB_STEP_SUMMARY
-          echo "2. Host the files on your web server" >> $GITHUB_STEP_SUMMARY
-          echo "3. Use those URLs in your ArgoCD config" >> $GITHUB_STEP_SUMMARY
+          echo "```yaml" >> $GITHUB_STEP_SUMMARY
+          echo "server:" >> $GITHUB_STEP_SUMMARY
+          echo "  extensions:" >> $GITHUB_STEP_SUMMARY
+          echo "    enabled: true" >> $GITHUB_STEP_SUMMARY
+          echo "    extensionList:" >> $GITHUB_STEP_SUMMARY
+          echo "      - name: extension-metrics" >> $GITHUB_STEP_SUMMARY
+          echo "        env:" >> $GITHUB_STEP_SUMMARY
+          echo "          - name: EXTENSION_URL" >> $GITHUB_STEP_SUMMARY
+          echo "            value: https://github.com/${{ github.repository }}/releases/download/${TAG_VERSION}/extension.tar.gz" >> $GITHUB_STEP_SUMMARY
+          echo "          - name: EXTENSION_CHECKSUM_URL" >> $GITHUB_STEP_SUMMARY
+          echo "            value: https://github.com/${{ github.repository }}/releases/download/${TAG_VERSION}/extension_checksums.txt" >> $GITHUB_STEP_SUMMARY
+          echo "```" >> $GITHUB_STEP_SUMMARY
