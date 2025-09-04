@@ -11,7 +11,7 @@ defaults:
 
 jobs:
   release:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     if: github.repository == 'baburciu/argocd-extension-metrics'
     name: Release
     steps:
