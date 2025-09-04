@@ -12,7 +12,7 @@ defaults:
 jobs:
   release:
     runs-on: ubuntu-20.04
-    if: github.repository == 'argoproj-labs/argocd-extension-metrics'
+    if: github.repository == 'baburciu/argocd-extension-metrics'
     name: Release
     steps:
       - name: Checkout
