@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -39,6 +40,19 @@ type PrometheusProvider struct {
 	config   *MetricsConfigProvider
 }
 
+// Custom RoundTripper to add headers
+type headerRoundTripper struct {
+	headers map[string]string
+	rt      http.RoundTripper
+}
+
+func (h *headerRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	for k, v := range h.headers {
+		req.Header.Add(k, v)
+	}
+	return h.rt.RoundTrip(req)
+}
+
 func (pp *PrometheusProvider) getType() string {
 	return PROMETHEUS_TYPE
 }
@@ -67,9 +81,21 @@ func NewPrometheusProvider(prometheusConfig *MetricsConfigProvider, logger *zap.
 }
 
 func (pp *PrometheusProvider) init() error {
-	client, err := api.NewClient(api.Config{
+	// Create config with headers support
+	clientConfig := api.Config{
 		Address: pp.config.Provider.Address,
-	})
+	}
+
+	// Check for environment variable PROMETHEUS_APIKEY
+	if apiKey := os.Getenv("PROMETHEUS_APIKEY"); apiKey != "" {
+		pp.logger.Info("Using PROMETHEUS_APIKEY from environment variable")
+		clientConfig.RoundTripper = &headerRoundTripper{
+			headers: map[string]string{"apikey": apiKey},
+			rt:      api.DefaultRoundTripper,
+		}
+	}
+
+	client, err := api.NewClient(clientConfig)
 	if err != nil {
 		pp.logger.Errorf("Error creating client: %v\n", err)
 		return err

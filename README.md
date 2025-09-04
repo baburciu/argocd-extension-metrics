@@ -32,6 +32,35 @@ extract and query Prometheus to display the golden signal metrics in
 Argo CD UI. This configmap must be changed depending on the metrics
 available in your Prometheus instance.
 
+#### Prometheus Authentication
+
+If your Prometheus instance requires authentication (e.g., API key), you should configure it using Kubernetes Secrets:
+
+1. **Create a Secret with your API key**:
+   ```yaml
+   apiVersion: v1
+   kind: Secret
+   metadata:
+     name: prometheus-credentials
+   type: Opaque
+   data:
+     PROMETHEUS_APIKEY: eHh4eA==  # Base64 encoded API key
+   ```
+
+2. **Mount the Secret in your deployment**:
+   ```yaml
+   spec:
+     containers:
+       - name: argocd-metrics-server
+         # ... other settings
+         envFrom:
+         - secretRef:
+             name: prometheus-credentials
+   ```
+
+See the example files in the `manifests` directory for complete configurations.
+
+> **Security Note**: Never store sensitive authentication credentials in ConfigMaps as they are not encrypted. Always use Kubernetes Secrets for API keys and other credentials.
 
 ### Install UI extension
 
