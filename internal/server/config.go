@@ -81,10 +81,11 @@ func (a Application) getDashBoard(groupKind string) *Dashboard {
 }
 
 type provider struct {
-	Name      string           `json:"name"`
-	Address   string           `json:"address"`
-	Default   bool             `json:"default"`
-	TLSConfig config.TLSConfig `json:"TLSConfig"`
+	Name      string              `json:"name"`
+	Address   string              `json:"address"`
+	Default   bool                `json:"default"`
+	TLSConfig config.TLSConfig    `json:"TLSConfig"`
+	Headers   map[string]string   `json:"headers,omitempty"`
 }
 
 type MetricsConfigProvider struct {
