@@ -3,7 +3,7 @@ name: release
 on:
   push:
     tags:
-      - 'v*'
+    - 'v*'
 
 defaults:
   run:
@@ -25,18 +25,40 @@ jobs:
         with:
           go-version: 1.21
 
-      - name: Docker Login in quay.io
+      - name: Docker Login to Docker Hub
         uses: docker/login-action@dd4fa0671be5250ee6f50aedf4cb05514abda2c7 # pin@v1
         with:
-          registry: quay.io
-          username: ${{ secrets.QUAY_USERNAME }}
-          password: ${{ secrets.QUAY_TOKEN }}
+          registry: docker.io
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@5fdedb94abba051217030cc86d4523cf3f02243d # pin@v4
+      - name: Run GoReleaser (snapshot)
+        uses: goreleaser/goreleaser-action@5fdedb94abba051217030cc86d4523cf3f02243d
         with:
           distribution: goreleaser
           version: latest
-          args: release --clean
+          args: release --snapshot --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload extension artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-artifacts-${{ github.sha }}
+          path: |
+            dist/*extension.tar.gz
+            dist/*checksums.txt
+          retention-days: 30
+
+      - name: Generate artifact URLs
+        run: |
+          echo "## 📦 Extension Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Download the extension files from the [Actions artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Artifact name: \`extension-artifacts-${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "For ArgoCD configuration, you'll need to:" >> $GITHUB_STEP_SUMMARY
+          echo "1. Download the artifact" >> $GITHUB_STEP_SUMMARY
+          echo "2. Host the files on your web server" >> $GITHUB_STEP_SUMMARY
+          echo "3. Use those URLs in your ArgoCD config" >> $GITHUB_STEP_SUMMARY

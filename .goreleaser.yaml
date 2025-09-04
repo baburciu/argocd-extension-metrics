@@ -35,8 +35,8 @@ builds:
 
 dockers:
   - image_templates:
-    - quay.io/argoprojlabs/argocd-extension-metrics:latest
-    - quay.io/argoprojlabs/argocd-extension-metrics:{{ .Tag }}
+    - bogdanadrianburciu/argocd-extension-metrics:latest
+    - bogdanadrianburciu/argocd-extension-metrics:{{ .Tag }}
     dockerfile: release.Dockerfile
     build_flag_templates:
     - "--pull"
@@ -72,8 +72,8 @@ release:
 
     ### Docker images
 
-    - quay.io/argoprojlabs/argocd-extension-metrics:{{ .Tag }}
-    - quay.io/argoprojlabs/argocd-extension-metrics:latest
+    - bogdanadrianburciu/argocd-extension-metrics:{{ .Tag }}
+    - bogdanadrianburciu/argocd-extension-metrics:latest
 
   footer: |
     **Full Changelog**: https://github.com/argoproj-labs/argocd-extension-metrics/compare/{{ .PreviousTag }}...{{ .Tag }}
