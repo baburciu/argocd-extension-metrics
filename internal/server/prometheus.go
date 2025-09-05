@@ -175,12 +175,44 @@ func executeGraphQuery(ctx *gin.Context, queryExpression string, env map[string]
 		Step:  time.Minute,
 	}
 
+	fmt.Printf("Executing Prometheus query: %s\n", strQuery)
+	fmt.Printf("Time range: start=%v, end=%v, step=%v\n", r.Start, r.End, r.Step)
+
 	result, warnings, err := pp.provider.QueryRange(ctx, strQuery, r)
 
 	if err != nil {
 		pp.logger.Errorf("Error querying prometheus at %s: %s, query: %s", pp.config.Provider.Address, err, strQuery)
 		pp.logger.Errorf("Provider config: Address: %s, Name: %s", pp.config.Provider.Address, pp.config.Provider.Name)
 		return nil, warnings, fmt.Errorf("error querying prometheus: %s", err)
+	}
+
+	// Log the result type and some details
+	fmt.Printf("Query result type: %T\n", result)
+	if result != nil {
+		switch v := result.(type) {
+		case model.Matrix:
+			fmt.Printf("Matrix result with %d series\n", len(v))
+			if len(v) > 0 {
+				fmt.Printf("First series has %d samples\n", len(v[0].Values))
+				if len(v[0].Values) > 0 {
+					fmt.Printf("Sample values: %v\n", v[0].Values[0].Value)
+				} else {
+					fmt.Printf("No samples in first series\n")
+				}
+			} else {
+				fmt.Printf("No series in matrix\n")
+			}
+		case model.Vector:
+			fmt.Printf("Vector result with %d samples\n", len(v))
+		case *model.Scalar:
+			fmt.Printf("Scalar pointer result: %v\n", v.Value)
+		case *model.String:
+			fmt.Printf("String pointer result: %s\n", v.Value)
+		default:
+			fmt.Printf("Unknown result type\n")
+		}
+	} else {
+		fmt.Printf("Query result is nil\n")
 	}
 
 	if len(warnings) > 0 {
@@ -246,6 +278,10 @@ func (pp *PrometheusProvider) execute(ctx *gin.Context) {
 			ctx.JSON(http.StatusBadRequest, fmt.Errorf("error marshaling the data: %s", err))
 			return
 		}
+
+		// Log the data being returned
+		jsonString, _ := json.MarshalIndent(data, "", "  ")
+		fmt.Printf("Returning data to UI: %s\n", string(jsonString))
 		var finalResultArr []ThresholdResponse
 		if graph.Thresholds != nil {
 
