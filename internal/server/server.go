@@ -108,6 +108,43 @@ func (ms *O11yServer) Run(ctx context.Context) {
 
 	handler.GET("/api/applications/:application/groupkinds/:groupkind/dashboards", ms.dashboardConfig)
 
+	// Add a test endpoint to check Prometheus connectivity and available metrics
+	handler.GET("/test-prometheus", func(c *gin.Context) {
+		// Only proceed if we have a Prometheus provider
+		if ms.provider == nil || ms.provider.getType() != PROMETHEUS_TYPE {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Prometheus provider not configured"})
+			return
+		}
+
+		// Cast to PrometheusProvider
+		pp, ok := ms.provider.(*PrometheusProvider)
+		if !ok {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to cast to PrometheusProvider"})
+			return
+		}
+
+		// Try a simple test query to list available metrics
+		ctx := c.Request.Context()
+		clientAPI := pp.provider
+
+		// Get a list of metric names
+		labelNames, warnings, err := clientAPI.LabelNames(ctx, nil, time.Now().Add(-1*time.Hour), time.Now())
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+				"warnings": warnings,
+			})
+			return
+		}
+
+		// Return the results
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Prometheus connection successful",
+			"available_labels": labelNames,
+			"warnings": warnings,
+		})
+	})
+
 	address := fmt.Sprintf(":%d", ms.port)
 	ms.logger.Infof("Server Configs: [address: %s, enableTLS: %t]", address, ms.enableTLS)
 	if ms.enableTLS {
