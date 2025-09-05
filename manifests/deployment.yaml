@@ -14,10 +14,11 @@ spec:
         app: argocd-metrics-server
     spec:
       containers:
-        - image: bogdanadrianburciu/argocd-extension-metrics:latest
+        - image: bogdanadrianburciu/argocd-extension-metrics:v1.0.4-rc3
           imagePullPolicy: IfNotPresent
           args:
             - '-enableTLS=false'
+            - '-skipPrometheusTLSVerify=true'
           name: argocd-metrics-server
           env:
             - name: PROMETHEUS_APIKEY

@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -38,6 +39,7 @@ type PrometheusProvider struct {
 	logger   *zap.SugaredLogger
 	provider v1.API
 	config   *MetricsConfigProvider
+	skipTLSVerify bool
 }
 
 // Custom RoundTripper to add headers
@@ -49,7 +51,7 @@ type headerRoundTripper struct {
 func (h *headerRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	// Log the URL being requested (without the API key for security)
 	fmt.Printf("Making request to: %s\n", req.URL.String())
-	
+
 	// Add all headers
 	for k, v := range h.headers {
 		req.Header.Add(k, v)
@@ -60,7 +62,7 @@ func (h *headerRoundTripper) RoundTrip(req *http.Request) (*http.Response, error
 			fmt.Printf("Added header: %s: [REDACTED]\n", k)
 		}
 	}
-	
+
 	// Show all request headers for debugging
 	fmt.Println("All request headers:")
 	for k, v := range req.Header {
@@ -70,7 +72,7 @@ func (h *headerRoundTripper) RoundTrip(req *http.Request) (*http.Response, error
 			fmt.Printf("  %s: [REDACTED]\n", k)
 		}
 	}
-	
+
 	return h.rt.RoundTrip(req)
 }
 
@@ -97,8 +99,12 @@ func (pp *PrometheusProvider) getDashboard(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, dash)
 }
 
-func NewPrometheusProvider(prometheusConfig *MetricsConfigProvider, logger *zap.SugaredLogger) *PrometheusProvider {
-	return &PrometheusProvider{config: prometheusConfig, logger: logger}
+func NewPrometheusProvider(prometheusConfig *MetricsConfigProvider, logger *zap.SugaredLogger, skipTLSVerify bool) *PrometheusProvider {
+	return &PrometheusProvider{
+		config: prometheusConfig,
+		logger: logger,
+		skipTLSVerify: skipTLSVerify,
+	}
 }
 
 func (pp *PrometheusProvider) init() error {
@@ -107,13 +113,32 @@ func (pp *PrometheusProvider) init() error {
 		Address: pp.config.Provider.Address,
 	}
 
+	// Set up the transport
+	var transport *http.Transport
+
+	// Apply TLS skip verification if requested
+	if pp.skipTLSVerify {
+		pp.logger.Info("Skipping TLS certificate verification for Prometheus connections")
+		transport = &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true, // Skip certificate verification
+			},
+		}
+	} else {
+		// Use default transport with normal TLS verification
+		transport = &http.Transport{}
+	}
+
 	// Check for environment variable PROMETHEUS_APIKEY
 	if apiKey := os.Getenv("PROMETHEUS_APIKEY"); apiKey != "" {
 		pp.logger.Info("Using PROMETHEUS_APIKEY from environment variable")
 		clientConfig.RoundTripper = &headerRoundTripper{
 			headers: map[string]string{"apikey": apiKey},
-			rt:      api.DefaultRoundTripper,
+			rt:      transport,
 		}
+	} else {
+		// No headers, but still need to use our transport
+		clientConfig.RoundTripper = transport
 	}
 
 	client, err := api.NewClient(clientConfig)

@@ -8,7 +8,7 @@ data:
     "prometheus": {
       "provider": {
         "name": "prometheus",
-        "address": "https://ds.groundcover.com/datasources/prometheus/api/v1",
+        "address": "https://ds.groundcover.com/datasources/prometheus",
         "default": true
       },
       "applications": [

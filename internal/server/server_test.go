@@ -115,8 +115,9 @@ func TestQueryMetrics(t *testing.T) {
 func createContextAndNewO11yServer(w *httptest.ResponseRecorder) (ctx *gin.Context, ms O11yServer) {
 	var port int
 	var enableTLS bool
+	var skipPrometheusTLSVerify bool
 	logger := logging.NewLogger().Named("metric-sever")
-	ms = NewO11yServer(logger, port, enableTLS)
+	ms = NewO11yServer(logger, port, enableTLS, skipPrometheusTLSVerify)
 	var temp MetricsProvider = MockO11yServer{}
 	ms.provider = temp
 	ctx = GetTestGinContext(w)

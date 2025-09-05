@@ -21,11 +21,12 @@ const PROMETHEUS_TYPE = "prometheus"
 const WAVEFRONT_TYPE = "wavefront"
 
 type O11yServer struct {
-	logger    *zap.SugaredLogger
-	config    O11yConfig
-	provider  MetricsProvider
-	port      int
-	enableTLS bool
+	logger                 *zap.SugaredLogger
+	config                 O11yConfig
+	provider               MetricsProvider
+	port                   int
+	enableTLS              bool
+	skipPrometheusTLSVerify bool
 }
 
 type MetricsProvider interface {
@@ -64,11 +65,12 @@ func validatePathParam(pathParam string, pathParamName string) error {
 	return nil
 }
 
-func NewO11yServer(logger *zap.SugaredLogger, port int, enableTLS bool) O11yServer {
+func NewO11yServer(logger *zap.SugaredLogger, port int, enableTLS bool, skipPrometheusTLSVerify bool) O11yServer {
 	return O11yServer{
 		logger:    logger,
 		port:      port,
 		enableTLS: enableTLS,
+		skipPrometheusTLSVerify: skipPrometheusTLSVerify,
 	}
 }
 func (ms *O11yServer) Run(ctx context.Context) {
@@ -79,7 +81,7 @@ func (ms *O11yServer) Run(ctx context.Context) {
 		panic(err)
 	}
 	if ms.config.Prometheus != nil {
-		ms.provider = NewPrometheusProvider(ms.config.Prometheus, ms.logger)
+		ms.provider = NewPrometheusProvider(ms.config.Prometheus, ms.logger, ms.skipPrometheusTLSVerify)
 		err := ms.provider.init()
 		if err != nil {
 			log.Panic(err)
