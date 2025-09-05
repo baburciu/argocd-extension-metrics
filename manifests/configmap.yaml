@@ -6,6 +6,11 @@ data:
   config.json: |
     {
     "prometheus": {
+      "provider": {
+        "name": "prometheus",
+        "address": "https://ds.groundcover.com/datasources/prometheus/api/v1",
+        "default": true
+      },
       "applications": [
         {
           "name": "default",
@@ -293,12 +298,6 @@ data:
             }
           ]
         }
-      ],
-      "provider":
-      {
-        "Name": "default",
-        "default": true,
-        "address": "http://prometheus-operated.monitoring.svc.cluster.local:9090"
-      }
+      ]
     }
     }

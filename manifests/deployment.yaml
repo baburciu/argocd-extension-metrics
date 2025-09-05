@@ -14,18 +14,17 @@ spec:
         app: argocd-metrics-server
     spec:
       containers:
-        - image: quay.io/argoprojlabs/argocd-extension-metrics:latest
+        - image: bogdanadrianburciu/argocd-extension-metrics:latest
           imagePullPolicy: IfNotPresent
           args:
             - '-enableTLS=false'
           name: argocd-metrics-server
-          # Uncomment to use Secret for Prometheus authentication
-          # env:
-          #   - name: PROMETHEUS_APIKEY
-          #     valueFrom:
-          #       secretKeyRef:
-          #         name: prometheus-credentials
-          #         key: apikey
+          env:
+            - name: PROMETHEUS_APIKEY
+              valueFrom:
+                secretKeyRef:
+                  name: groundcover-api-key
+                  key: datasource-api-key
           ports:
             - containerPort: 9003
               name: metrics

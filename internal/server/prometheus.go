@@ -47,9 +47,30 @@ type headerRoundTripper struct {
 }
 
 func (h *headerRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Log the URL being requested (without the API key for security)
+	fmt.Printf("Making request to: %s\n", req.URL.String())
+	
+	// Add all headers
 	for k, v := range h.headers {
 		req.Header.Add(k, v)
+		// Log header names (but not values for security)
+		if k != "apikey" {
+			fmt.Printf("Added header: %s: %s\n", k, v)
+		} else {
+			fmt.Printf("Added header: %s: [REDACTED]\n", k)
+		}
 	}
+	
+	// Show all request headers for debugging
+	fmt.Println("All request headers:")
+	for k, v := range req.Header {
+		if k != "apikey" {
+			fmt.Printf("  %s: %s\n", k, v)
+		} else {
+			fmt.Printf("  %s: [REDACTED]\n", k)
+		}
+	}
+	
 	return h.rt.RoundTrip(req)
 }
 
@@ -132,11 +153,14 @@ func executeGraphQuery(ctx *gin.Context, queryExpression string, env map[string]
 	result, warnings, err := pp.provider.QueryRange(ctx, strQuery, r)
 
 	if err != nil {
+		pp.logger.Errorf("Error querying prometheus at %s: %s, query: %s", pp.config.Provider.Address, err, strQuery)
+		pp.logger.Errorf("Provider config: Address: %s, Name: %s", pp.config.Provider.Address, pp.config.Provider.Name)
 		return nil, warnings, fmt.Errorf("error querying prometheus: %s", err)
 	}
 
 	if len(warnings) > 0 {
-		return result, warnings, fmt.Errorf("query warnings: %s", err)
+		pp.logger.Warnf("Query warnings: %v", warnings)
+		return result, warnings, fmt.Errorf("query warnings: %s", warnings)
 	}
 
 	return result, nil, nil
@@ -182,11 +206,13 @@ func (pp *PrometheusProvider) execute(ctx *gin.Context) {
 		result, warnings, err := executeGraphQuery(ctx, graph.QueryExpression, env, duration, pp)
 
 		if err != nil {
+			pp.logger.Errorf("Error executing graph query: %v", err)
 			ctx.JSON(http.StatusBadRequest, err)
 			return
 		}
 		if len(warnings) > 0 {
 			warningMsg := fmt.Errorf("query warnings: %s", warnings)
+			pp.logger.Warnf("Query warnings: %v", warnings)
 			ctx.JSON(http.StatusBadRequest, warningMsg.Error())
 			return
 		}
